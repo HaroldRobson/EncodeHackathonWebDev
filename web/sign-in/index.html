@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Letter Ahead - Sign In</title>
+    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
+    <style>
+        :root {
+            --color-background: #FFFBF5;
+            --color-text: #4A443D;
+            --color-primary: #E87A5D;
+            --color-primary-hover: #D96C4E;
+            --color-accent: #F3B869;
+            --color-border: #EAE2D8;
+            --color-success: #70A9A1;
+            --color-error: #E56B6F;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--color-background);
+            color: var(--color-text);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image: url('login_background.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 251, 245, 0.85);
+            z-index: 1;
+        }
+
+        .container {
+            position: relative;
+            z-index: 2;
+            max-width: 450px;
+            width: 90%;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+
+        h1 {
+            font-family: Georgia, 'Times New Roman', Times, serif;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--color-text);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #6B5D52;
+            margin-bottom: 2rem;
+        }
+
+        .welcome-message {
+            font-size: 1rem;
+            color: var(--color-text);
+            margin-bottom: 2rem;
+            line-height: 1.7;
+        }
+
+        button {
+            background-color: var(--color-primary);
+            color: white;
+            padding: 16px 32px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 500;
+            transition: all 0.2s ease-in-out;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        button:hover {
+            background-color: var(--color-primary-hover);
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            margin: 2rem 0;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid var(--color-border);
+            border-top: 3px solid var(--color-primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-message {
+            padding: 12px;
+            border-radius: 8px;
+            margin: 1rem 0;
+            display: none;
+        }
+
+        .status-message.show {
+            display: block;
+        }
+
+        .status-message.success {
+            background-color: #E8F5F3;
+            color: var(--color-success);
+            border: 1px solid var(--color-success);
+        }
+
+        .status-message.error {
+            background-color: #FDF2F2;
+            color: var(--color-error);
+            border: 1px solid var(--color-error);
+        }
+
+        .footer {
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            color: #8B7355;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                width: 95%;
+                padding: 10px;
+            }
+            
+            .card {
+                padding: 30px 25px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay"></div>
+    
+    <div class="container">
+        <div class="card">
+            <h1>A Letter Ahead</h1>
+            <p class="subtitle">Birthday Donations Made Simple</p>
+            
+            <div class="welcome-message">
+                Create magical birthday experiences for your children. Friends and family can contribute to their future with heartfelt messages and donations that grow into something special.
+            </div>
+
+            <button id="loginBtn" onclick="handleLogin()">
+                Sign In / Create Account
+            </button>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p id="loadingText">Setting up your account...</p>
+            </div>
+
+            <div class="status-message" id="statusMessage"></div>
+
+            <div class="footer">
+                <p>Secure authentication powered by Auth0</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let auth0Client;
+        const API_BASE = 'http://localhost:8080'; // Change to your API URL
+
+        // Initialize Auth0
+async function initAuth0() {
+    auth0Client = new auth0.Auth0Client({
+        domain: 'dev-1j1laxnkr7v5eef8.us.auth0.com',
+        clientId: 'a5cqTLsgKYUlYJyuZB4zzbDWWdzwAmtl',
+        authorizationParams: {
+            redirect_uri: window.location.origin + '/sign-in/'
+        },
+        cacheLocation: 'localstorage' // This can help with callback handling
+    });
+
+    // Check if we're coming back from Auth0 or Stripe
+    await handleCallback();
+}
+
+        // Handle the callback from Auth0 or Stripe
+        async function handleCallback() {
+            console.log('=== CALLBACK DEBUG ===');
+            console.log('Current URL:', window.location.href);
+            console.log('URL Search:', window.location.search);
+            
+            const callbackParams = new URLSearchParams(window.location.search);
+            const stripeAccount = callbackParams.get('account');
+            const authCode = callbackParams.get('code');
+            const authError = callbackParams.get('error');
+            const authErrorDescription = callbackParams.get('error_description');
+            
+            console.log('Stripe account:', stripeAccount);
+            console.log('Auth code:', authCode);
+            console.log('Auth error:', authError);
+            console.log('Auth error description:', authErrorDescription);
+            
+            if (authError) {
+                console.error('Auth0 returned an error:', authError, authErrorDescription);
+                showMessage(`Login failed: ${authErrorDescription}`, 'error');
+                return;
+            }
+            
+            if (stripeAccount) {
+                // Coming back from Stripe
+                await handleStripeReturn(stripeAccount);
+            } else if (authCode) {
+                // Coming back from Auth0
+                await handleAuth0Return();
+            } else {
+                console.log('No callback parameters found');
+            }
+        }
+
+        // Handle Auth0 login
+async function handleLogin() {
+    try {
+        setLoading(true, 'Redirecting to login...');
+        await auth0Client.loginWithRedirect({
+            authorizationParams: {
+                prompt: 'login'
+            }
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        console.error('Error details:', {
+            message: error.message,
+            error_code: error.error,
+            error_description: error.error_description
+        });
+        showMessage('Login failed. Please try again.', 'error');
+        setLoading(false);
+    }
+}
+
+        // Handle return from Auth0
+        async function handleAuth0Return() {
+            try {
+                console.log('=== AUTH0 RETURN DEBUG ===');
+                setLoading(true, 'Processing login...');
+                
+                console.log('About to handle redirect callback...');
+                await auth0Client.handleRedirectCallback();
+                console.log('Redirect callback handled successfully');
+                
+                console.log('Getting user...');
+                const user = await auth0Client.getUser();
+                console.log('User data:', user);
+                
+                if (user) {
+                    setLoading(true, 'Setting up your account...');
+                    
+                    console.log('Attempting to create parent with:', {
+                        parent_email: user.email,
+                        auth0_id: user.sub
+                    });
+                    
+                    // Try to create parent account
+                    const response = await fetch(`${API_BASE}/api/parents/create`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            parent_email: user.email,
+                            auth0_id: user.sub
+                        })
+                    });
+
+                    console.log('API Response status:', response.status);
+                    const responseText = await response.text();
+                    console.log('API Response text:', responseText);
+
+                    if (response.ok) {
+                        // New user - redirect to Stripe onboarding
+                        const parentData = JSON.parse(responseText);
+                        console.log('New user created:', parentData);
+                        showMessage('Account created! Setting up payments...', 'success');
+                        
+                        setTimeout(() => {
+                            // Redirect to Stripe onboarding (you'll need to implement this)
+                            window.location.href = '/stripe-setup/';
+                        }, 2000);
+                        
+                    } else if (response.status === 409) {
+                        // Existing user - get parent ID and redirect to dashboard
+                        console.log('Existing user detected');
+                        setLoading(true, 'Welcome back! Redirecting...');
+                        
+                        // You'll need to implement getting parent_id from auth0_id
+                        // For now, we'll just redirect and let the dashboard handle it
+                        setTimeout(() => {
+                            window.location.href = '/parent-portal/';
+                        }, 1500);
+                        
+                    } else {
+                        throw new Error(`API call failed with status ${response.status}: ${responseText}`);
+                    }
+                }
+            } catch (error) {
+                console.error('DETAILED AUTH0 ERROR:', error);
+                console.error('Error message:', error.message);
+                console.error('Error stack:', error.stack);
+                showMessage('Account setup failed. Please try again.', 'error');
+                setLoading(false);
+            }
+        }
+
+        // Handle return from Stripe
+        async function handleStripeReturn(accountId) {
+            try {
+                setLoading(true, 'Completing payment setup...');
+
+                // Mark Stripe onboarding as complete
+                const response = await fetch(`${API_BASE}/api/payments/onboarding-complete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        stripe_connect_account_id: accountId
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showMessage('Payment setup complete! Welcome to A Letter Ahead!', 'success');
+                    
+                    setTimeout(() => {
+                        window.location.href = `/parent-portal/?parent_id=${data.parent_id}`;
+                    }, 2000);
+                } else {
+                    throw new Error('Failed to complete payment setup');
+                }
+            } catch (error) {
+                console.error('Stripe return error:', error);
+                showMessage('Payment setup failed. Please contact support.', 'error');
+                setLoading(false);
+            }
+        }
+
+        // Utility functions
+        function setLoading(show, text = 'Loading...') {
+            const loading = document.getElementById('loading');
+            const loadingText = document.getElementById('loadingText');
+            const loginBtn = document.getElementById('loginBtn');
+
+            if (show) {
+                loading.classList.add('show');
+                loadingText.textContent = text;
+                loginBtn.disabled = true;
+            } else {
+                loading.classList.remove('show');
+                loginBtn.disabled = false;
+            }
+        }
+
+        function showMessage(message, type) {
+            const statusMessage = document.getElementById('statusMessage');
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type} show`;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusMessage.classList.remove('show');
+                }, 5000);
+            }
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', initAuth0);
+    </script>
+</body>
+</html>

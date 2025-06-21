@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Birthday Donations - Join Waitlist</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #fafafa;
+        }
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #4A90E2;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #357abd;
+        }
+        .success {
+            color: #7ED321;
+            margin-top: 15px;
+        }
+        .error {
+            color: #D0021B;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>🎂 Birthday Donations</h1>
+        <p>Help build children's financial futures through birthday celebrations!</p>
+        
+        <!-- Hidden iframe for form submission -->
+        <iframe name="hidden-iframe" style="display:none;"></iframe>
+        
+        <!-- Updated form -->
+        <form id="waitlist-form" action="https://script.google.com/macros/s/AKfycbzsAY_b4Hk-NKH1HLc6rM8klI1_mvlpAAtlZu9nxM4Y314fLJYGUBw7kHZQ7m2s8sVV2Q/exec" method="POST" target="hidden-iframe">
+            <input type="email" name="email" placeholder="Your email" required>
+            <input type="text" name="name" placeholder="Your name (optional)">
+            <button type="submit">Join Waitlist</button>
+        </form>
+        
+        <div id="message"></div>
+    </div>
+
+    <!-- Updated script -->
+    <script>
+        document.getElementById('waitlist-form').addEventListener('submit', function(e) {
+            // Let the form submit normally to the hidden iframe
+            // Show success message immediately
+            setTimeout(function() {
+                document.getElementById('message').innerHTML = '<div class="success">🎉 Thanks! You\'re on the waitlist!</div>';
+                document.getElementById('waitlist-form').reset();
+            }, 100);
+        });
+    </script>
+</body>
+</html>

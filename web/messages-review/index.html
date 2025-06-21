@@ -237,6 +237,21 @@ button.secondary:hover {
     margin-bottom: 20px;
 }
 
+.no-donations {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.no-donations h3 {
+    color: var(--color-text);
+    margin-bottom: 10px;
+}
+
+.no-donations p {
+    font-style: italic;
+}
+
 /* Responsive design */
 @media (max-width: 600px) {
     body {
@@ -353,231 +368,281 @@ input:checked + .toggle-slider:before {
     </div>
 
     <script>
-        // Get event_id from URL query parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const eventId = urlParams.get('event_id');
-       console.log('Full URL:', window.location.href);
-console.log('Query string:', window.location.search);
-console.log('URLSearchParams:', urlParams);
-console.log('Extracted eventId:', eventId);
-console.log('eventId type:', typeof eventId);
-console.log('parseInt(eventId):', parseInt(eventId));
- 
-        if (!eventId) {
-            alert('Error: event_id is required in the URL query parameter');
-        }
-        
-        let donationsData = null;
-        
-        // Load donations data on page load
-        window.addEventListener('load', async function() {
-            await loadDonationsData();
-        });
-        
-        async function loadDonationsData() {
+        // Application state
+        let appState = {
+            eventId: null,
+            donationsData: null,
+            isLoading: true,
+            error: null
+        };
+
+        // DOM elements
+        const elements = {
+            loading: document.getElementById('loading'),
+            error: document.getElementById('error'),
+            content: document.getElementById('content'),
+            summaryStats: document.getElementById('summary-stats'),
+            donationList: document.getElementById('donation-list')
+        };
+
+        // Initialize the application
+        async function init() {
             try {
-                console.log('About to make API call with eventId:', eventId, 'parsed as:', parseInt(eventId));
-        
-                // Uncomment this when API is ready
+                // Get event_id from URL
+                const urlParams = new URLSearchParams(window.location.search);
+                appState.eventId = urlParams.get('event_id');
+                
+                if (!appState.eventId) {
+                    throw new Error('event_id is required in the URL query parameter');
+                }
+
+                console.log('Initializing with event_id:', appState.eventId);
+                
+                // Load donations data
+                await loadDonations();
+                
+                // Render the page
+                render();
+                
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showError(error.message);
+            }
+        }
+
+        // Load donations from API
+        async function loadDonations() {
+            try {
+                console.log('Loading donations for event_id:', appState.eventId);
+                
                 const response = await fetch('http://localhost:8080/api/donations/list', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ event_id: parseInt(eventId) })
+                    body: JSON.stringify({ 
+                        event_id: parseInt(appState.eventId) 
+                    })
                 });
-                
+
+                console.log('API Response status:', response.status);
+
                 if (response.status === 404) {
-                    document.getElementById('loading').innerHTML = 'Event not found';
-                    return;
+                    throw new Error('Event not found');
                 }
-                
+
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
+
+                const data = await response.json();
+                console.log('Received donations data:', data);
                 
-                donationsData = await response.json();
-                
-                
-                // Sample response for testing
-                /*
-                donationsData = {
-                    "donations": [
-                        {
-                            "id": 123,
-                            "message": "Happy birthday Emma! You're amazing!",
-                            "donor_name": "Uncle Bob",
-                            "amount_pence": 500,
-                            "approved": true,
-                            "event_id": 1,
-                            "created_at": "2025-06-20T15:30:00Z",
-                            "video_address": null
-                        },
-                        {
-                            "id": 124,
-                            "message": "Hope you have the best day ever!",
-                            "donor_name": "Aunt Sarah",
-                            "amount_pence": 1000,
-                            "approved": false,
-                            "event_id": 1,
-                            "created_at": "2025-06-20T16:45:00Z",
-                            "video_address": "http://localhost:8080/videos/sarah_video.mp4"
-                        },
-                        {
-                            "id": 125,
-                            "message": "You're growing up so fast! Can't wait to see you!",
-                            "donor_name": "Grandma Mary",
-                            "amount_pence": 750,
-                            "approved": false,
-                            "event_id": 1,
-                            "created_at": "2025-06-21T10:15:00Z",
-                            "video_address": null
-                        }
-                    ],
-                    "total_donations": 3,
-                    "approved_donations": 1,
-                    "pending_donations": 2,
-                    "total_amount_pence": 2250,
-                    "approved_amount_pence": 500,
-                    "event_name": "Emma's 8th Birthday",
-                    "child_name": "Emma"
-                };
-                */
-                
-                displayDonationsData();
+                // Store in app state
+                appState.donationsData = data;
+                appState.isLoading = false;
+                appState.error = null;
                 
             } catch (error) {
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('error').textContent = `Error loading donations: ${error.message}`;
+                console.error('Error loading donations:', error);
+                appState.isLoading = false;
+                appState.error = error.message;
+                throw error;
             }
         }
-        
-        function displayDonationsData() {
-            const loading = document.getElementById('loading');
-            const content = document.getElementById('content');
-            
-            loading.style.display = 'none';
-            content.style.display = 'block';
-            
-            // Set page title
-            document.title = `Donations Review - ${donationsData.event_name}`;
-            
-            // Display summary stats
-            displaySummaryStats();
-            
-            // Display donations list
-            displayDonationsList();
+
+        // Render the entire page based on current state
+        function render() {
+            if (appState.isLoading) {
+                showLoading();
+                return;
+            }
+
+            if (appState.error) {
+                showError(appState.error);
+                return;
+            }
+
+            if (!appState.donationsData) {
+                showError('No data available');
+                return;
+            }
+
+            showContent();
         }
-        
-        function displaySummaryStats() {
-            const summaryStats = document.getElementById('summary-stats');
+
+        // Show loading state
+        function showLoading() {
+            elements.loading.style.display = 'block';
+            elements.error.style.display = 'none';
+            elements.content.style.display = 'none';
+        }
+
+        // Show error state
+        function showError(message) {
+            elements.loading.style.display = 'none';
+            elements.error.style.display = 'block';
+            elements.content.style.display = 'none';
+            elements.error.textContent = `Error: ${message}`;
+        }
+
+        // Show main content
+        function showContent() {
+            elements.loading.style.display = 'none';
+            elements.error.style.display = 'none';
+            elements.content.style.display = 'block';
+            
+            // Update page title
+            document.title = `Donations Review - ${appState.donationsData.event_name}`;
+            
+            // Render components
+            renderSummaryStats();
+            renderDonationsList();
+        }
+
+        // Render summary statistics
+        function renderSummaryStats() {
+            const data = appState.donationsData;
             
             const stats = [
                 {
-                    number: donationsData.total_donations,
+                    number: data.total_donations,
                     label: 'Total Donations'
                 },
                 {
-                    number: donationsData.approved_donations,
+                    number: data.approved_donations,
                     label: 'Approved'
                 },
                 {
-                    number: donationsData.pending_donations,
+                    number: data.pending_donations,
                     label: 'Pending Review'
                 },
                 {
-                    number: `$${(donationsData.total_amount_pence / 100).toFixed(2)}`,
+                    number: `$${(data.total_amount_pence / 100).toFixed(2)}`,
                     label: 'Total Amount'
                 },
                 {
-                    number: `$${(donationsData.approved_amount_pence / 100).toFixed(2)}`,
+                    number: `$${(data.approved_amount_pence / 100).toFixed(2)}`,
                     label: 'Approved Amount'
                 }
             ];
-            
-            summaryStats.innerHTML = stats.map(stat => `
+
+            elements.summaryStats.innerHTML = stats.map(stat => `
                 <div class="stat-card">
                     <span class="stat-number">${stat.number}</span>
                     <div class="stat-label">${stat.label}</div>
                 </div>
             `).join('');
         }
-        
-        function displayDonationsList() {
-            const donationList = document.getElementById('donation-list');
+
+        // Render donations list
+        function renderDonationsList() {
+            const data = appState.donationsData;
             
-            if (donationsData.donations.length === 0) {
-                donationList.innerHTML = '<p style="text-align: center; color: #666; font-style: italic;">No donations found for this event.</p>';
-                return;
-            }
-            
-            donationList.innerHTML = donationsData.donations.map(donation => {
-                const donationDate = new Date(donation.created_at);
-                const amount = (donation.amount_pence / 100).toFixed(2);
-                const statusClass = donation.approved ? 'status-approved' : 'status-pending';
-                const statusText = donation.approved ? 'Approved' : 'Pending';
-                
-                return `
-                    <div class="donation-item" data-donation-id="${donation.id}">
-                        <div class="donation-header">
-                            <div class="donor-name">${donation.donor_name}</div>
-                            <div class="amount">$${amount}</div>
-                        </div>
-                        
-                        ${donation.message ? `<div class="donation-message">"${donation.message}"</div>` : ''}
-                        
-                        <div class="donation-meta">
-                            <div class="donation-date">${donationDate.toLocaleDateString()} at ${donationDate.toLocaleTimeString()}</div>
-                            <div class="donation-status">
-                                <span class="status-badge ${statusClass}">${statusText}</span>
-                                ${donation.video_address ? `<a href="${donation.video_address}" target="_blank" class="video-link">📹 Watch Video</a>` : ''}
-                            </div>
-                        </div>
-                        
-                        <div class="approval-controls">
-                            <span class="approval-label">Approve Donation:</span>
-                            <label class="toggle-switch">
-                                <input type="checkbox" 
-                                       id="toggle-${donation.id}" 
-                                       ${donation.approved ? 'checked' : ''} 
-                                       onchange="handleApprovalToggle(${donation.id}, this.checked)">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
+            // Handle empty donations
+            if (!data.donations || data.donations.length === 0) {
+                elements.donationList.innerHTML = `
+                    <div class="no-donations">
+                        <h3>No donations yet</h3>
+                        <p>When people start donating to ${data.event_name}, they'll appear here for your review.</p>
                     </div>
                 `;
-            }).join('');
+                return;
+            }
+
+            // Render donation items
+            elements.donationList.innerHTML = data.donations.map(donation => 
+                renderDonationItem(donation)
+            ).join('');
         }
-        
+
+        // Render individual donation item
+        function renderDonationItem(donation) {
+            const donationDate = new Date(donation.created_at);
+            const amount = (donation.amount_pence / 100).toFixed(2);
+            const statusClass = donation.approved ? 'status-approved' : 'status-pending';
+            const statusText = donation.approved ? 'Approved' : 'Pending';
+            
+            return `
+                <div class="donation-item" data-donation-id="${donation.id}">
+                    <div class="donation-header">
+                        <div class="donor-name">${donation.donor_name}</div>
+                        <div class="amount">$${amount}</div>
+                    </div>
+                    
+                    ${donation.message ? `<div class="donation-message">"${donation.message}"</div>` : ''}
+                    
+                    <div class="donation-meta">
+                        <div class="donation-date">${donationDate.toLocaleDateString()} at ${donationDate.toLocaleTimeString()}</div>
+                        <div class="donation-status">
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                            ${donation.video_address ? `<a href="${donation.video_address}" target="_blank" class="video-link">📹 Watch Video</a>` : ''}
+                        </div>
+                    </div>
+                    
+                    <div class="approval-controls">
+                        <span class="approval-label">Approve Donation:</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" 
+                                   id="toggle-${donation.id}" 
+                                   ${donation.approved ? 'checked' : ''} 
+                                   onchange="handleApprovalToggle(${donation.id}, this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Handle approval toggle
         async function handleApprovalToggle(donationId, approved) {
             try {
-                await approveDonation(donationId, approved);
+                console.log(`Toggling approval for donation ${donationId} to ${approved}`);
                 
-                // Update local data
-                const donation = donationsData.donations.find(d => d.id == donationId);
+                // Call API to update approval
+                await updateDonationApproval(donationId, approved);
+                
+                // Update local state
+                const donation = appState.donationsData.donations.find(d => d.id === donationId);
                 if (donation) {
                     donation.approved = approved;
+                    
+                    // Update summary stats
+                    if (approved) {
+                        appState.donationsData.approved_donations++;
+                        appState.donationsData.pending_donations--;
+                        appState.donationsData.approved_amount_pence += donation.amount_pence;
+                    } else {
+                        appState.donationsData.approved_donations--;
+                        appState.donationsData.pending_donations++;
+                        appState.donationsData.approved_amount_pence -= donation.amount_pence;
+                    }
                 }
                 
-                // Refresh the display
-                displayDonationsData();
+                // Re-render to update UI
+                render();
                 
             } catch (error) {
-                console.error('Error approving donation:', error);
+                console.error('Error updating approval:', error);
                 alert(`Error updating donation: ${error.message}`);
+                
+                // Reset the toggle to its previous state
+                const toggle = document.getElementById(`toggle-${donationId}`);
+                if (toggle) {
+                    toggle.checked = !approved;
+                }
             }
         }
-        
-        async function approveDonation(donationId, approved) {
+
+        // Update donation approval via API
+        async function updateDonationApproval(donationId, approved) {
             const requestBody = {
                 donation_id: parseInt(donationId),
                 approved: approved
             };
-            
-            console.log('Request body:', JSON.stringify(requestBody));
-            
-            // Uncomment this when API is ready
+
+            console.log('Sending approval request:', requestBody);
+
             const response = await fetch('http://localhost:8080/api/donations/approve', {
                 method: 'POST',
                 headers: {
@@ -585,34 +650,20 @@ console.log('parseInt(eventId):', parseInt(eventId));
                 },
                 body: JSON.stringify(requestBody)
             });
-            
+
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
             }
-            
+
             const data = await response.json();
-            console.log('API Response:', JSON.stringify(data, null, 2));
+            console.log('Approval response:', data);
             
             return data;
-            
-            // Mock response for testing
-            /*
-            const mockResponse = {
-                donation_id: parseInt(donationId),
-                approved: approved,
-                donor_name: donationsData.donations.find(d => d.id == donationId)?.donor_name || 'Unknown',
-                message: approved ? 'Donation approved successfully' : 'Donation rejected successfully'
-            };
-            
-            console.log('Mock API Response:', JSON.stringify(mockResponse, null, 2));
-            
-            // Simulate API delay
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            return mockResponse;
-            */
         }
+
+        // Start the application when DOM is loaded
+        window.addEventListener('load', init);
     </script>
 </body>
-</html> 
+</html>

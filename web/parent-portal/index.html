@@ -449,7 +449,7 @@ a:hover {
         function displayChildrenList() {
             const childrenList = document.getElementById('children-list');
             
-            if (!childrenData || childrenData.children.length === 0) {
+            if (!childrenData || !childrenData.children || childrenData.children.length === 0) {
                 childrenList.innerHTML = '<p style="text-align: center; color: #666; font-style: italic;">No children found. Add your first child!</p>';
                 return;
             }
@@ -481,7 +481,7 @@ a:hover {
         function displayEventsList() {
             const eventsList = document.getElementById('events-list');
             
-            if (!eventsData || eventsData.events.length === 0) {
+            if (!eventsData || !eventsData.events || eventsData.events.length === 0) {
                 eventsList.innerHTML = '<p style="text-align: center; color: #666; font-style: italic;">No events found. Create an event for your child!</p>';
                 return;
             }

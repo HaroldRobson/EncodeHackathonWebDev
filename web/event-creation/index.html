@@ -410,7 +410,7 @@ button.success:hover {
                 
                 if (response.ok) {
                     // Success
-                    const eventUrl = `${window.location.origin}/event?event_id=${data.event_id}`;
+                    const eventUrl = `${window.location.origin}/event/?event_id=${data.event_id}`;
                     resultDiv.className = 'result success';
                     resultDiv.innerHTML = `
                         <strong>Event created successfully!</strong><br>

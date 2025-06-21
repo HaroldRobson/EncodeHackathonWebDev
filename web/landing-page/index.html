@@ -200,7 +200,7 @@
             if (!emailInput.value) return;
 
             const userEmail = encodeURIComponent(emailInput.value);
-            const loginUrl = `/login-page?user_email=${userEmail}`;
+            const loginUrl = `/sign-in/?user_email=${userEmail}`;
 
             // Give the form time to start submitting before we alter the DOM
             setTimeout(() => {
